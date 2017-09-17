@@ -41,31 +41,47 @@ class Grid {
     }
 }
 class Boundary {
-    Map<Integer, Set<Integer>> boundary;
+    private Set<GridIndex> boundary;
+    private Map<Integer, Map<Integer, GridIndex>> boundaryMap;
+    private GridIndex firstBoundary;
+    private int gridNum = 0;
 
     public Boundary() {
-        this.boundary = new HashMap<>();
+        this.boundary = new HashSet<>();
+        this.boundaryMap = new HashMap<>();
+    }
+
+    public void setGridNum(int gridNum) {
+        this.gridNum = gridNum;
+    }
+
+    public GridIndex getFirstBoundary() {
+        return firstBoundary;
+    }
+
+    public void setFirstBoundary(GridIndex firstBoundary) {
+        this.firstBoundary = firstBoundary;
     }
 
     public void add(GridIndex gridIndex) {
-        Set<Integer> row = boundary.get(gridIndex.getRow());
-        if (row == null) {
-            row = new HashSet<>();
-            this.boundary.put(gridIndex.getRow(), row);
+        boundary.add(gridIndex);
+        if (boundaryMap.containsKey(gridIndex.getRow())) {
+            boundaryMap.get(gridIndex.getRow()).put(gridIndex.getCol(), gridIndex);
+        } else {
+            Map<Integer, GridIndex> row = new HashMap<>();
+            row.put(gridIndex.getCol(), gridIndex);
+            boundaryMap.put(gridIndex.getRow(), row);
         }
-        row.add(gridIndex.getCol());
     }
 
-    public boolean contains(GridIndex gridIndex) {
-        return boundary.containsKey(gridIndex.getRow()) &&
-                boundary.get(gridIndex.getRow()).contains(gridIndex.getCol());
+    public GridIndex index2instance(GridIndex gridIndex) {
+        if (boundaryMap.containsKey(gridIndex.getRow()) &&
+                boundaryMap.get(gridIndex.getRow()).containsKey(gridIndex.getCol())) {
+            return boundaryMap.get(gridIndex.getRow()).get(gridIndex.getCol());
+        }
+        return null;
     }
-    public GridIndex findFirstBoundary() {
-        Map.Entry<Integer, Set<Integer>> entry = boundary.entrySet().iterator().next();
-        int rowIndex = entry.getKey();
-        int colIndex = Collections.min(entry.getValue());
-        return new GridIndex(rowIndex, colIndex);
-    }
+
     static public GridIndex getNextClockWiseGridIndex(GridIndex last, GridIndex cur) {
         List<GridIndex> offsets = new ArrayList<>();
         offsets.add(new GridIndex(-1, -1));
@@ -86,32 +102,37 @@ class Boundary {
         }
         return null;
     }
+
+    private GridIndex getNextBoundary(GridIndex last, GridIndex cur) {
+        GridIndex nextIndex;
+        while (true) {
+            nextIndex = getNextClockWiseGridIndex(last, cur);
+            GridIndex next = index2instance(nextIndex);
+            if (next != null) {
+                return next;
+            }
+            last = nextIndex;
+        }
+    }
+
     public List<GridIndex> regularization() {
-        GridIndex cur = findFirstBoundary();
+        if (gridNum <= 3) {
+            return null;
+        }
+        GridIndex cur = getFirstBoundary();
         GridIndex last = new GridIndex(cur.getRow(), cur.getCol()-1);
-        Map<Integer, HashMap<Integer, GridIndex>> processed = new HashMap<Integer, HashMap<Integer, GridIndex>>();
+        Map<GridIndex, GridIndex> processed = new HashMap<>();
         List<GridIndex> regularGridIndex = new ArrayList<>();
 
         GridIndex next;
         while (true) {
-            while (true) {
-                next = getNextClockWiseGridIndex(last, cur);
-                if (contains(next)) {
-                    break;
-                }
-                last = next;
-            }
-            if (processed.containsKey(cur.getRow()) && processed.get(cur.getRow()).containsKey(cur.getCol()) &&
-                    processed.get(cur.getRow()).get(cur.getCol()).getRow() == next.getRow() &&
-                    processed.get(cur.getRow()).get(cur.getCol()).getCol() == next.getCol()) {
+            next = getNextBoundary(last, cur);
+            if (processed.containsKey(cur) &&
+                    processed.get(cur) == next) {
                 break;
             }
             regularGridIndex.add(cur);
-            if (!processed.containsKey(cur.getRow())) {
-                processed.put(cur.getRow(), new HashMap<>());
-            }
-            processed.get(cur.getRow()).put(cur.getCol(), next);
-//            System.out.println(cur.getRow() + " " + cur.getCol());
+            processed.put(cur, next);
             last = cur;
             cur = next;
         }
@@ -137,8 +158,8 @@ class Matrix {
         int maxCol = Integer.MIN_VALUE;
 
         for (Position position: Grids) {
-            int colIndex = Math.floorDiv(position.getLatitude(), 50);
-            int rowIndex = Math.floorDiv(position.getLongitude(), 50);
+            int colIndex = Math.floorDiv(position.getY(), 50);
+            int rowIndex = Math.floorDiv(position.getX(), 50);
             if (colIndex < minCol) {
                 minCol = colIndex;
             }
@@ -182,6 +203,7 @@ class Matrix {
     }
 
     public Boundary generateBadArea(GridIndex originator, int label) {
+        int minBoundaryCol = Integer.MAX_VALUE;
         Stack<GridIndex> stack = new Stack<>();
         Boundary boundary = new Boundary();
         int badGridNum = 1;
@@ -211,9 +233,14 @@ class Matrix {
 
             if (neighbor != 4) {
                 boundary.add(cur);
+                if (cur.getCol() < minBoundaryCol) {
+                    minBoundaryCol = cur.getCol();
+                    boundary.setFirstBoundary(cur);
+                }
             }
         }
-        return badGridNum <= 3 ? null : boundary;
+        boundary.setGridNum(badGridNum);
+        return boundary;
     }
     public Polygon generatePolygon(List<GridIndex> badArea) {
         Polygon polygon = new Polygon();

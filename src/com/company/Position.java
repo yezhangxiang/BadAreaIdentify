@@ -4,27 +4,27 @@ package com.company;
  * Created by kele on 2017/9/13.
  */
 public class Position {
-    private int longitude;
-    private int latitude;
+    private int x;
+    private int y;
 
-    public int getLongitude() {
-        return longitude;
+    public int getX() {
+        return x;
     }
 
-    public void setLongitude(int longitude) {
-        this.longitude = longitude;
+    public void setX(int x) {
+        this.x = x;
     }
 
-    public int getLatitude() {
-        return latitude;
+    public int getY() {
+        return y;
     }
 
-    public Position(int longitude, int latitude) {
-        this.longitude = longitude;
-        this.latitude = latitude;
+    public Position(int x, int y) {
+        this.x = x;
+        this.y = y;
     }
 
-    public void setLatitude(int latitude) {
-        this.latitude = latitude;
+    public void setY(int y) {
+        this.y = y;
     }
 }

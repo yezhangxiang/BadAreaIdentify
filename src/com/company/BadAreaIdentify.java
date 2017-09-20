@@ -184,16 +184,13 @@ class Matrix {
         this.end = new GridIndex(maxRow, maxCol);
     }
     public GridIndex findNexUntreated(GridIndex last) {
-        for (int rowIndex = last.getRow(); rowIndex < end.getRow();++rowIndex) {
+        for (int rowIndex = last.getRow(); rowIndex <= end.getRow();++rowIndex) {
             HashMap<Integer, Grid> row = matrix.get(rowIndex);
             if (row == null) {
                 continue;
             }
-            int colIndex = last.getCol();
-            if (rowIndex != last.getRow()) {
-                colIndex = 0;
-            }
-            for (; colIndex < end.getCol(); ++colIndex) {
+            int colIndex = rowIndex != last.getRow() ? 0 : last.getCol();
+            for (; colIndex <= end.getCol(); ++colIndex) {
                 if (row.containsKey(colIndex) && -1 == row.get(colIndex).getLabel()) {
                     return new GridIndex(rowIndex,colIndex);
                 }
@@ -207,6 +204,7 @@ class Matrix {
         Stack<GridIndex> stack = new Stack<>();
         Boundary boundary = new Boundary();
         int badGridNum = 1;
+        matrix.get(originator.getRow()).get(originator.getCol()).setLabel(label);
         stack.push(originator);
         while (!stack.empty()) {
             GridIndex cur = stack.pop();
